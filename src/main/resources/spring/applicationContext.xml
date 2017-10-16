@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:p="http://www.springframework.org/schema/p" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+     http://www.springframework.org/schema/context
+     http://www.springframework.org/schema/context/spring-context-4.0.xsd
+     http://www.springframework.org/schema/aop
+     http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+     http://www.springframework.org/schema/tx
+     http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+    <context:property-placeholder location="classpath:jdbc.properties"/>
+    <context:component-scan base-package="com"/>
+    <!--只读数据库-->
+    <bean id="dataSourceRead" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+          destroy-method="close"
+          p:driverClass="${jdbc.driverClass}"
+          p:jdbcUrl="${jdbc.url}"
+          p:user="${jdbc.username}"
+          p:password="${jdbc.password}"
+          p:initialPoolSize="10"
+          p:minPoolSize="10"
+          p:maxPoolSize="100"/>
+    <!--增 删除数据库-->
+    <bean id="dataSourceWrite" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+          destroy-method="close"
+          p:driverClass="${jdbcOne.driverClass}"
+          p:jdbcUrl="${jdbcOne.url}"
+          p:user="${jdbcOne.username}"
+          p:password="${jdbcOne.password}"
+          p:initialPoolSize="10"
+          p:minPoolSize="10"
+          p:maxPoolSize="100"
+    />
+    <bean id="dataSource" class="com.fxft.datasource.DynamicDataSource">
+        <property name="targetDataSources">
+            <map key-type="java.lang.String">
+                <entry value-ref="dataSourceRead" key="dataSourceRead"></entry>
+                <entry key="dataSourceWrite" value-ref="dataSourceWrite"></entry>
+            </map>
+        </property>
+        <property name="defaultTargetDataSource" ref="dataSourceRead"></property>
+    </bean>
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean"
+          p:dataSource-ref="dataSource">
+        <property name="packagesToScan" value="com.fxft.dao"/>
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+                <prop key="show_sql">true</prop>
+                <prop key="hibernate.format_sql">true</prop>
+            </props>
+        </property>
+    </bean>
+
+    <bean id="lobHandler"
+          class="org.springframework.jdbc.support.lob.DefaultLobHandler"
+          lazy-init="true"/>
+    <bean id="hibernateTemplate"
+          class="org.springframework.orm.hibernate4.HibernateTemplate"
+          p:sessionFactory-ref="sessionFactory"/>
+
+    <bean id="transactionManager"
+          class="org.springframework.orm.hibernate4.HibernateTransactionManager"
+          p:sessionFactory-ref="sessionFactory"
+    />
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+</beans>
